@@ -27,7 +27,7 @@ configMapGenerator:
     files:
       - restore.sh
     options:
-      # Mounted by name from the web patch; deploy.sh restarts web when the script changes.
+      # Mounted by name from the web patch; deploy.sh restarts web when apply reports this map configured.
       disableNameSuffixHash: true
 
 patches:

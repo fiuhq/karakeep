@@ -43,7 +43,8 @@ spec:
             - { name: data, mountPath: /data }
             - { name: work, mountPath: /work }
             - { name: fiu, mountPath: /fiu }
-        # 3. Make this pod the newest entry (keeping four older ones), so a retired pod's copy is never restored again.
+        # 3. Make this pod the newest entry, so a retired pod's copy is never restored again. Five entries: this pod, the
+        #    copy it restored from (always kept), then the next newest.
         - name: pointer-write
           image: curlimages/curl:8.23.0
           command: ["sh", "-c"]
@@ -51,7 +52,8 @@ spec:
             - |
               set -eu
               [ "$(head -n 1 /work/pointer)" = "$POD_UID" ] && exit 0
-              { echo "$POD_UID"; grep -vx "$POD_UID" /work/pointer | head -n 4 || true; } > /work/pointer.new
+              { echo "$POD_UID"; cat /work/restored-from 2>/dev/null || true; cat /work/pointer; } \
+                | awk 'NF && !seen[$0]++' | head -n 5 > /work/pointer.new
               curl -sS -f --max-time 30 -X PUT --data-binary @/work/pointer.new --aws-sigv4 aws:amz:auto:s3 \
                 --user "$R2_KEY:$R2_SECRET" "$R2_ENDPOINT/$R2_BUCKET/litestream/pointer"
               echo "pointer now starts with $POD_UID"
@@ -75,22 +77,6 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /data }
             - { name: work, mountPath: /work }
-        # 5. Meilisearch keeps its index in an emptyDir, so a moved pod starts with an empty one: once Karakeep answers,
-        #    ask it to reindex every bookmark. Needs an admin API key; without one it only waits.
-        - name: reindex
-          image: curlimages/curl:8.23.0
-          restartPolicy: Always
-          command: ["sh", "-c"]
-          args:
-            - |
-              until curl -sf -o /dev/null http://127.0.0.1:3000/api/health; do sleep 5; done
-              if [ -n "${ADMIN_API_KEY:-}" ]; then
-                curl -sf -o /dev/null -X POST -H "Authorization: Bearer $ADMIN_API_KEY" -H "content-type: application/json" \
-                  -d '{"json":{}}' http://127.0.0.1:3000/api/trpc/admin.reindexAllBookmarks && echo "reindex queued"
-              fi
-              exec sleep 2147483647
-          env:
-            - { name: ADMIN_API_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: KARAKEEP_ADMIN_API_KEY, optional: true } } }
       containers:
         - name: web
           imagePullPolicy: IfNotPresent

@@ -28,14 +28,20 @@ ts = json.loads(subprocess.run(["/Applications/Tailscale.app/Contents/MacOS/Tail
 server = subprocess.run(["kubectl", "config", "view", "--minify", "-o", "jsonpath={.clusters[0].cluster.server}"], capture_output=True, text=True, check=True).stdout
 server_ip = server.split("//")[1].rsplit(":", 1)[0]
 host = next(p["DNSName"].rstrip(".") for p in ts["Peer"].values() if server_ip in p.get("TailscaleIPs", []))
+# The only place the Karakeep version is set: upstream's kustomization takes the web image tag from this .env.
 env = {"NEXTAUTH_URL": f"http://{host}:3000", "KARAKEEP_VERSION": "0.34.1", "ASSET_STORE_S3_BUCKET": r2["bucket"]}
 sec = {"NEXTAUTH_SECRET": k["nextauth_secret"], "MEILI_MASTER_KEY": k["meili_master_key"], "NEXT_PUBLIC_SECRET": k["next_public_secret"],
        "OPENAI_API_KEY": s["llmgateway"]["api_key"], "ASSET_STORE_S3_ENDPOINT": r2["endpoint"],
        "ASSET_STORE_S3_ACCESS_KEY_ID": r2["access_key_id"], "ASSET_STORE_S3_SECRET_ACCESS_KEY": r2["secret_access_key"]}
-if "api_key" in k:  # the first account's key, made after the first deploy; lets a moved pod rebuild its search index
+if "api_key" in k:  # the first account's key, made after the first deploy; lets a new Meilisearch pod rebuild its index
     sec["KARAKEEP_ADMIN_API_KEY"] = k["api_key"]
 for name, d in ((".env", env), (".secrets", sec)):
     fd = os.open(os.path.join(out, name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     os.write(fd, "".join(f"{a}={b}\n" for a, b in d.items()).encode()); os.close(fd)
 PY
-kubectl apply -k "$scratch/fiu/k3s"
+applied=$(kubectl apply -k "$scratch/fiu/k3s")
+echo "$applied"
+# restore.sh is mounted by name, so a changed script reaches web only through a restart.
+case "$applied" in
+  *"configmap/karakeep-litestream configured"*) kubectl -n karakeep rollout restart deployment/web ;;
+esac
