@@ -39,13 +39,25 @@ patches:
         name: web
       spec:
         type: ClusterIP
-  # The three Deployments share one placement.
+  # The Deployments share one placement.
   - path: placement.yaml
     target:
       kind: Deployment
-      name: web|chrome|meilisearch
+      name: web|chrome
   - path: web.yaml
-  - path: meilisearch.yaml
+  # Meilisearch runs inside the web pod instead (see web.yaml).
+  - patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: meilisearch
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: meilisearch
   - patch: |-
       $patch: delete
       apiVersion: v1

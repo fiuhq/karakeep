@@ -77,14 +77,48 @@ spec:
           volumeMounts:
             - { name: data, mountPath: /data }
             - { name: work, mountPath: /work }
+        # 5. Meilisearch, inside this pod: its index lives in an emptyDir and Karakeep creates the index only when it
+        #    starts, so the two must start, move and restart together. Karakeep starts once it answers.
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.55.0
+          restartPolicy: Always
+          env:
+            - { name: MEILI_NO_ANALYTICS, value: "true" }
+            - { name: MEILI_MASTER_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: MEILI_MASTER_KEY } } }
+          startupProbe:
+            httpGet: { path: /health, port: 7700 }
+            periodSeconds: 2
+            failureThreshold: 60
+          volumeMounts:
+            - { name: meilisearch, mountPath: /meili_data }
+        # 6. Rebuild the empty index once Karakeep accepts the request. Every request is bounded, and it retries.
+        - name: reindex
+          image: curlimages/curl:8.23.0
+          restartPolicy: Always
+          command: ["sh", "-c"]
+          args:
+            - |
+              if [ -n "${ADMIN_API_KEY:-}" ]; then
+                until curl -sf --max-time 30 -o /dev/null -X POST -H "Authorization: Bearer $ADMIN_API_KEY" \
+                  -H "content-type: application/json" -d '{"json":{}}' \
+                  http://127.0.0.1:3000/api/trpc/admin.reindexAllBookmarks; do sleep 10; done
+                echo "reindex queued"
+              fi
+              exec sleep 2147483647
+          env:
+            - { name: ADMIN_API_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: KARAKEEP_ADMIN_API_KEY, optional: true } } }
       containers:
         - name: web
+          env:
+            - { name: MEILI_ADDR, value: "http://127.0.0.1:7700" }
           imagePullPolicy: IfNotPresent
       volumes:
         - name: data
           persistentVolumeClaim: null
           emptyDir: {}
         - name: work
+          emptyDir: {}
+        - name: meilisearch
           emptyDir: {}
         - name: fiu
           configMap:
