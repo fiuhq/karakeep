@@ -24,7 +24,7 @@ if changed:  # first deploy: keep the generated app secrets so every later deplo
     fd = os.open(path, os.O_WRONLY | os.O_TRUNC); os.write(fd, (json.dumps(s, indent=2) + "\n").encode()); os.close(fd)
 r2 = k["r2"]
 ts = json.loads(subprocess.run(["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "status", "--json"], capture_output=True, text=True, check=True).stdout)
-# Karakeep's URL is the tailnet name of the node the kubeconfig talks to: the always-on server, whose front serves it.
+# The fallback URL is the tailnet name of the node the kubeconfig talks to: the always-on server, whose front serves it.
 server = subprocess.run(["kubectl", "config", "view", "--minify", "-o", "jsonpath={.clusters[0].cluster.server}"], capture_output=True, text=True, check=True).stdout
 server_ip = server.split("//")[1].rsplit(":", 1)[0]
 host = next(p["DNSName"].rstrip(".") for p in ts["Peer"].values() if server_ip in p.get("TailscaleIPs", []))
