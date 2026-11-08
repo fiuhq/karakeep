@@ -24,6 +24,13 @@ trustPolicyExclude:
   - semver@6.3.1
   # faisalman (the author), 1.x maintenance after 2.0 prereleases had provenance.
   - ua-parser-js@1.0.41
+  # alanhughes (Expo team, 78 of the 56.x/57.x releases), SDK 57 maintenance after SDK 58's line moved to
+  # trusted publishing.
+  - expo-updates@57.0.27
+  # alanhughes (Expo team), an SDK 57 dependency of expo-updates published by hand.
+  - "expo-eas-client@57.0.5"
+  # alanhughes (Expo team), an SDK 57 dependency of expo-updates published by hand.
+  - "@expo/plist@0.8.2"
 # Only direct dependencies may come from git repos or tarball URLs. This is
 # already pnpm 11's default; it's set explicitly so a future default change
 # can't silently turn it off.

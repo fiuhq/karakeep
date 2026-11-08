@@ -1,0 +1,6 @@
+# fiuhq fork: native folders are generated at build time (continuous native generation), and config-plugin helper
+# files resolve differently between a local install and the build machine; neither changes the native layer, so they
+# stay out of the runtime fingerprint that decides which build an over-the-air update may reach.
+android/**/*
+ios/**/*
+../../node_modules/convert-source-map/**/*
