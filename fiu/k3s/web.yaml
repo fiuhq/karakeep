@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  template:
+    spec:
+      initContainers:
+        # 1. Read the pointer: pod UIDs, newest first. A missing pointer (404) is an empty list; anything else fails the pod.
+        - name: pointer-read
+          image: curlimages/curl:8.23.0
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              code=$(curl -sS -o /work/pointer -w '%{http_code}' --max-time 30 --aws-sigv4 aws:amz:auto:s3 \
+                --user "$R2_KEY:$R2_SECRET" "$R2_ENDPOINT/$R2_BUCKET/litestream/pointer")
+              case "$code" in
+                200) ;;
+                404) : > /work/pointer ;;
+                *) echo "reading the pointer failed: HTTP $code"; exit 1 ;;
+              esac
+              echo "pointer: $(tr '\n' ' ' < /work/pointer)"
+          env:
+            - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
+            - { name: R2_BUCKET, valueFrom: { configMapKeyRef: { name: karakeep-configuration, key: ASSET_STORE_S3_BUCKET } } }
+            - { name: R2_ENDPOINT, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ENDPOINT } } }
+            - { name: R2_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ACCESS_KEY_ID } } }
+            - { name: R2_SECRET, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_SECRET_ACCESS_KEY } } }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+        # 2. Restore from the newest replica that holds data, and write this pod's Litestream config.
+        - name: restore
+          image: litestream/litestream:0.5.18
+          command: ["sh", "/fiu/restore.sh"]
+          env:
+            - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
+            - { name: R2_BUCKET, valueFrom: { configMapKeyRef: { name: karakeep-configuration, key: ASSET_STORE_S3_BUCKET } } }
+            - { name: R2_ENDPOINT, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ENDPOINT } } }
+            - { name: LITESTREAM_ACCESS_KEY_ID, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ACCESS_KEY_ID } } }
+            - { name: LITESTREAM_SECRET_ACCESS_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_SECRET_ACCESS_KEY } } }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: work, mountPath: /work }
+            - { name: fiu, mountPath: /fiu }
+        # 3. Make this pod the newest entry (keeping four older ones), so a retired pod's copy is never restored again.
+        - name: pointer-write
+          image: curlimages/curl:8.23.0
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              [ "$(head -n 1 /work/pointer)" = "$POD_UID" ] && exit 0
+              { echo "$POD_UID"; grep -vx "$POD_UID" /work/pointer | head -n 4 || true; } > /work/pointer.new
+              curl -sS -f --max-time 30 -X PUT --data-binary @/work/pointer.new --aws-sigv4 aws:amz:auto:s3 \
+                --user "$R2_KEY:$R2_SECRET" "$R2_ENDPOINT/$R2_BUCKET/litestream/pointer"
+              echo "pointer now starts with $POD_UID"
+          env:
+            - { name: POD_UID, valueFrom: { fieldRef: { fieldPath: metadata.uid } } }
+            - { name: R2_BUCKET, valueFrom: { configMapKeyRef: { name: karakeep-configuration, key: ASSET_STORE_S3_BUCKET } } }
+            - { name: R2_ENDPOINT, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ENDPOINT } } }
+            - { name: R2_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ACCESS_KEY_ID } } }
+            - { name: R2_SECRET, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_SECRET_ACCESS_KEY } } }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+        # 4. Replicate for as long as the pod lives; a native sidecar stops after the app, so its last writes ship.
+        - name: litestream
+          image: litestream/litestream:0.5.18
+          restartPolicy: Always
+          # Karakeep creates its databases on first start; Litestream gives up on a file that is not there yet.
+          command: ["sh", "-c", "until [ -f /data/db.db ] && [ -f /data/queue.db ]; do sleep 2; done; exec litestream replicate -config /work/litestream.yml"]
+          env:
+            - { name: LITESTREAM_ACCESS_KEY_ID, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_ACCESS_KEY_ID } } }
+            - { name: LITESTREAM_SECRET_ACCESS_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: ASSET_STORE_S3_SECRET_ACCESS_KEY } } }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: work, mountPath: /work }
+        # 5. Meilisearch keeps its index in an emptyDir, so a moved pod starts with an empty one: once Karakeep answers,
+        #    ask it to reindex every bookmark. Needs an admin API key; without one it only waits.
+        - name: reindex
+          image: curlimages/curl:8.23.0
+          restartPolicy: Always
+          command: ["sh", "-c"]
+          args:
+            - |
+              until curl -sf -o /dev/null http://127.0.0.1:3000/api/health; do sleep 5; done
+              if [ -n "${ADMIN_API_KEY:-}" ]; then
+                curl -sf -o /dev/null -X POST -H "Authorization: Bearer $ADMIN_API_KEY" -H "content-type: application/json" \
+                  -d '{"json":{}}' http://127.0.0.1:3000/api/trpc/admin.reindexAllBookmarks && echo "reindex queued"
+              fi
+              exec sleep 2147483647
+          env:
+            - { name: ADMIN_API_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: KARAKEEP_ADMIN_API_KEY, optional: true } } }
+      containers:
+        - name: web
+          imagePullPolicy: IfNotPresent
+      volumes:
+        - name: data
+          persistentVolumeClaim: null
+          emptyDir: {}
+        - name: work
+          emptyDir: {}
+        - name: fiu
+          configMap:
+            name: karakeep-litestream

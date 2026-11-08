@@ -1,0 +1,60 @@
+# Karakeep on fiuhq/k3s: upstream's own manifests (../../kubernetes), unchanged, plus this overlay.
+#
+#   - Placement: every Karakeep pod prefers the Mac's node (fiu.one/node=mac) and leaves an unreachable node after
+#     30s instead of 5m, so it moves to the control-plane node when the Mac sleeps or goes offline.
+#   - Data follows the pod: assets live in the R2 bucket (ASSET_STORE_S3_*), and the two SQLite databases are restored
+#     from and replicated to R2 by Litestream. The volumes are emptyDirs; no PVC pins a pod to a node.
+#   - Fencing: each pod replicates under its own UID and a pointer file lists the newest UIDs first, so a pod still
+#     running on a node the cluster gave up on only ever writes to its own retired copy.
+#
+# deploy.sh renders this with the gitignored .env/.secrets the upstream kustomization expects; nothing secret or
+# node-specific is committed here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: karakeep
+
+resources:
+  - ../../kubernetes
+  - front.yaml
+
+configMapGenerator:
+  - name: karakeep-configuration
+    behavior: merge
+    envs:
+      - config.env
+  - name: karakeep-litestream
+    files:
+      - restore.sh
+    options:
+      # Mounted by name from the web patch; deploy.sh restarts web when the script changes.
+      disableNameSuffixHash: true
+
+patches:
+  # Reached through the front on every node instead of the service load balancer (see front.yaml).
+  - patch: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: web
+      spec:
+        type: ClusterIP
+  # The three Deployments share one placement.
+  - path: placement.yaml
+    target:
+      kind: Deployment
+      name: web|chrome|meilisearch
+  - path: web.yaml
+  - path: meilisearch.yaml
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data-pvc
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: meilisearch-pvc

@@ -1,0 +1,12 @@
+# The search index is rebuilt from the database after a move instead of being carried along.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+spec:
+  template:
+    spec:
+      volumes:
+        - name: meilisearch
+          persistentVolumeClaim: null
+          emptyDir: {}

@@ -1,0 +1,25 @@
+# Port 3000 on every node's tailnet address, forwarding to Karakeep wherever it runs. A real listening socket on the
+# host network, because a WSL node in mirrored networking mode only hands inbound connections to ports something in
+# Linux listens on, and the service load balancer's iptables forwarding never listens.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: front
+spec:
+  selector:
+    matchLabels:
+      app: karakeep-front
+  template:
+    metadata:
+      labels:
+        app: karakeep-front
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: caddy
+          image: caddy:2.11.9-alpine
+          args: ["caddy", "reverse-proxy", "--from", ":3000", "--to", "web.karakeep.svc.cluster.local:3000"]
+          ports:
+            - containerPort: 3000
+              hostPort: 3000
