@@ -1,0 +1,30 @@
+# The search index is rebuilt from the database after a move instead of being carried along.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+spec:
+  template:
+    spec:
+      initContainers:
+        # Every new Meilisearch pod starts with an empty index: once it and Karakeep answer, ask Karakeep to reindex
+        # every bookmark. Needs an admin API key; without one it only waits.
+        - name: reindex
+          image: curlimages/curl:8.23.0
+          restartPolicy: Always
+          command: ["sh", "-c"]
+          args:
+            - |
+              until curl -sf -o /dev/null http://127.0.0.1:7700/health; do sleep 5; done
+              until curl -sf -o /dev/null http://web.karakeep.svc.cluster.local:3000/api/health; do sleep 5; done
+              if [ -n "${ADMIN_API_KEY:-}" ]; then
+                curl -sf -o /dev/null -X POST -H "Authorization: Bearer $ADMIN_API_KEY" -H "content-type: application/json" \
+                  -d '{"json":{}}' http://web.karakeep.svc.cluster.local:3000/api/trpc/admin.reindexAllBookmarks && echo "reindex queued"
+              fi
+              exec sleep 2147483647
+          env:
+            - { name: ADMIN_API_KEY, valueFrom: { secretKeyRef: { name: karakeep-secrets, key: KARAKEEP_ADMIN_API_KEY, optional: true } } }
+      volumes:
+        - name: meilisearch
+          persistentVolumeClaim: null
+          emptyDir: {}

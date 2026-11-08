@@ -1,0 +1,22 @@
+# Checks for the fiu/ directory this fork carries (Karakeep on fiuhq/k3s). Upstream's workflows never run for it.
+name: fiu
+on:
+  pull_request:
+    paths:
+      - "fiu/**"
+      - ".github/workflows/fiu.yaml"
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.1.0
+      - name: Shell scripts parse and pass shellcheck
+        run: |
+          for f in fiu/k3s/deploy.sh fiu/k3s/restore.sh; do sh -n "$f"; done
+          shellcheck -S warning fiu/k3s/deploy.sh fiu/k3s/restore.sh
+      - name: The overlay renders over upstream's manifests
+        run: |
+          # deploy.sh writes these from secrets at deploy time; placeholders are enough to render.
+          printf 'KARAKEEP_VERSION=0.0.0\nNEXTAUTH_URL=http://example.invalid:3000\nASSET_STORE_S3_BUCKET=bucket\n' > kubernetes/.env
+          printf 'NEXTAUTH_SECRET=x\nASSET_STORE_S3_ENDPOINT=https://example.invalid\nASSET_STORE_S3_ACCESS_KEY_ID=x\nASSET_STORE_S3_SECRET_ACCESS_KEY=x\n' > kubernetes/.secrets
+          kubectl kustomize fiu/k3s > /dev/null
