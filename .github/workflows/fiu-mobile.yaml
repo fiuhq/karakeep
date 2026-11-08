@@ -1,0 +1,43 @@
+# The fork's mobile app follows trunk: every push that can change it publishes an over-the-air update to the
+# installed build, or starts a new build when the native layer changed (Expo's fingerprint decides which).
+name: fiu mobile
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/fiu-mobile.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: fiu-mobile
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Selects the fork's identity and update URL in apps/mobile/app.config.ts.
+      FIU_VARIANT: fiu
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: expo/expo-github-action@v9
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: pnpm install --frozen-lockfile --filter "@karakeep/mobile..."
+      - uses: expo/expo-github-action/continuous-deploy-fingerprint@v9
+        with:
+          profile: fiu
+          branch: trunk
+          platform: android
+          working-directory: apps/mobile
