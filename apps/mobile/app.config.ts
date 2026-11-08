@@ -46,7 +46,11 @@ export default (): AppConfig => {
       // An update reaches only builds whose native layer matches it exactly.
       runtimeVersion: { policy: "fingerprint" },
       updates: { url: `https://u.expo.dev/${FIU_PROJECT_ID}` },
-      extra: { ...expo.extra, eas: { projectId: FIU_PROJECT_ID } },
+      extra: {
+        ...expo.extra,
+        fiuVariant: true,
+        eas: { projectId: FIU_PROJECT_ID },
+      },
     },
   };
 };

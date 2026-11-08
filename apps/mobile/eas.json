@@ -23,7 +23,6 @@
       },
       "env": {
         "FIU_VARIANT": "fiu",
-        "EXPO_PUBLIC_FIU_VARIANT": "fiu",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }

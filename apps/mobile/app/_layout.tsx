@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 import { ThemeProvider as NavThemeProvider, useRouter } from "expo-router";
 import { Stack } from "expo-router/stack";
 import { ShareIntentProvider, useShareIntent } from "expo-share-intent";
@@ -22,7 +23,7 @@ import * as Sentry from "@sentry/react-native";
 
 Sentry.init({
   dsn: "https://a61d93ed65066ed54c8566ba6b6a01d2@o4511008866172928.ingest.de.sentry.io/4511008868270160",
-  enabled: process.env.EXPO_PUBLIC_FIU_VARIANT !== "fiu",
+  enabled: Constants.expoConfig?.extra?.fiuVariant !== true,
 
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/

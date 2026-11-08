@@ -23,7 +23,6 @@ jobs:
     env:
       # Selects the fork's identity and update URL in apps/mobile/app.config.ts.
       FIU_VARIANT: fiu
-      EXPO_PUBLIC_FIU_VARIANT: fiu
     steps:
       - uses: actions/checkout@v6.1.0
         with:
