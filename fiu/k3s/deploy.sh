@@ -24,12 +24,14 @@ if changed:  # first deploy: keep the generated app secrets so every later deplo
     fd = os.open(path, os.O_WRONLY | os.O_TRUNC); os.write(fd, (json.dumps(s, indent=2) + "\n").encode()); os.close(fd)
 r2 = k["r2"]
 ts = json.loads(subprocess.run(["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "status", "--json"], capture_output=True, text=True, check=True).stdout)
-# Karakeep's URL is the tailnet name of the node the kubeconfig talks to: the always-on server, whose front serves it.
+# The fallback URL is the tailnet name of the node the kubeconfig talks to: the always-on server, whose front serves it.
 server = subprocess.run(["kubectl", "config", "view", "--minify", "-o", "jsonpath={.clusters[0].cluster.server}"], capture_output=True, text=True, check=True).stdout
 server_ip = server.split("//")[1].rsplit(":", 1)[0]
 host = next(p["DNSName"].rstrip(".") for p in ts["Peer"].values() if server_ip in p.get("TailscaleIPs", []))
 # The only place the Karakeep version is set: upstream's kustomization takes the web image tag from this .env.
-env = {"NEXTAUTH_URL": f"http://{host}:3000", "KARAKEEP_VERSION": "0.34.1", "ASSET_STORE_S3_BUCKET": r2["bucket"]}
+# The public URL when one is published (a tunnel to the cluster), else the tailnet address of the server's front.
+public_url = k.get("public_url") or f"http://{host}:3000"
+env = {"NEXTAUTH_URL": public_url, "KARAKEEP_VERSION": "0.34.1", "ASSET_STORE_S3_BUCKET": r2["bucket"]}
 sec = {"NEXTAUTH_SECRET": k["nextauth_secret"], "MEILI_MASTER_KEY": k["meili_master_key"], "NEXT_PUBLIC_SECRET": k["next_public_secret"],
        "OPENAI_API_KEY": s["llmgateway"]["api_key"], "ASSET_STORE_S3_ENDPOINT": r2["endpoint"],
        "ASSET_STORE_S3_ACCESS_KEY_ID": r2["access_key_id"], "ASSET_STORE_S3_SECRET_ACCESS_KEY": r2["secret_access_key"]}
