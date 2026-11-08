@@ -9,7 +9,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6.1.0
       - name: Shell scripts parse and pass shellcheck
         run: |
           for f in fiu/k3s/deploy.sh fiu/k3s/restore.sh; do sh -n "$f"; done

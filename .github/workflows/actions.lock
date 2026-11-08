@@ -35,6 +35,8 @@ workflows:
         - 'actions/setup-node@v4.4.0'
         - 'actions/upload-artifact@v4.6.2'
         - 'pnpm/action-setup@v6.0.8'
+    '.github/workflows/fiu.yaml':
+        - 'actions/checkout@v6.1.0'
     '.github/workflows/ios.yml':
         - 'actions/checkout@v4.3.1'
         - 'actions/setup-node@v4.4.0'
