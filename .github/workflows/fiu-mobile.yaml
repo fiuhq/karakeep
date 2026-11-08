@@ -23,19 +23,17 @@ jobs:
     env:
       # Selects the fork's identity and update URL in apps/mobile/app.config.ts.
       FIU_VARIANT: fiu
+      EXPO_PUBLIC_FIU_VARIANT: fiu
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v6.1.0
         with:
-          node-version: 24
-          cache: pnpm
-      - uses: expo/expo-github-action@v9
+          persist-credentials: false
+      - uses: $/tooling/github/setup
+      - uses: expo/expo-github-action@9.0.2
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-      - run: pnpm install --frozen-lockfile --filter "@karakeep/mobile..."
-      - uses: expo/expo-github-action/continuous-deploy-fingerprint@v9
+      - uses: expo/expo-github-action/continuous-deploy-fingerprint@9.0.2
         with:
           profile: fiu
           branch: trunk

@@ -45,11 +45,7 @@ export default (): AppConfig => {
       android: { ...expo.android, package: "one.fiu.karakeep" },
       // An update reaches only builds whose native layer matches it exactly.
       runtimeVersion: { policy: "fingerprint" },
-      updates: {
-        url: `https://u.expo.dev/${FIU_PROJECT_ID}`,
-        checkAutomatically: "ON_LOAD",
-        fallbackToCacheTimeout: 0,
-      },
+      updates: { url: `https://u.expo.dev/${FIU_PROJECT_ID}` },
       extra: { ...expo.extra, eas: { projectId: FIU_PROJECT_ID } },
     },
   };

@@ -35,6 +35,11 @@ workflows:
         - 'actions/setup-node@v4.4.0'
         - 'actions/upload-artifact@v4.6.2'
         - 'pnpm/action-setup@v6.0.8'
+    '.github/workflows/fiu-mobile.yaml':
+        - 'actions/checkout@v6.1.0'
+        - 'actions/setup-node@v4.4.0'
+        - 'expo/expo-github-action@9.0.2'
+        - 'pnpm/action-setup@v6.0.8'
     '.github/workflows/fiu.yaml':
         - 'actions/checkout@v6.1.0'
     '.github/workflows/ios.yml':
@@ -108,6 +113,11 @@ dependencies:
     'expo/expo-github-action@8.2.1':
         ref: '8.2.1'
         commit: 'sha1-c7b66a9c327a43a8fa7c0158e7f30d6040d2481e'
+        owner_id: 12504344
+        repo_id: 161909611
+    'expo/expo-github-action@9.0.2':
+        ref: '9.0.2'
+        commit: 'sha1-5273c2136bd09c2a341fe3340d3e767ce5a13015'
         owner_id: 12504344
         repo_id: 161909611
     'pnpm/action-setup@v6.0.8':
