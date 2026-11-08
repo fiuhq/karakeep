@@ -33,7 +33,7 @@ env = {"NEXTAUTH_URL": f"http://{host}:3000", "KARAKEEP_VERSION": "0.34.1", "ASS
 sec = {"NEXTAUTH_SECRET": k["nextauth_secret"], "MEILI_MASTER_KEY": k["meili_master_key"], "NEXT_PUBLIC_SECRET": k["next_public_secret"],
        "OPENAI_API_KEY": s["llmgateway"]["api_key"], "ASSET_STORE_S3_ENDPOINT": r2["endpoint"],
        "ASSET_STORE_S3_ACCESS_KEY_ID": r2["access_key_id"], "ASSET_STORE_S3_SECRET_ACCESS_KEY": r2["secret_access_key"]}
-if "api_key" in k:  # the first account's key, made after the first deploy; lets a new Meilisearch pod rebuild its index
+if "api_key" in k:  # the first account's key, made after the first deploy; lets a new web pod rebuild its index
     sec["KARAKEEP_ADMIN_API_KEY"] = k["api_key"]
 for name, d in ((".env", env), (".secrets", sec)):
     fd = os.open(os.path.join(out, name), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
@@ -41,6 +41,8 @@ for name, d in ((".env", env), (".secrets", sec)):
 PY
 applied=$(kubectl apply -k "$scratch/fiu/k3s")
 echo "$applied"
+# The overlay drops upstream's meilisearch Deployment and Service; apply never prunes, so remove what an older deploy left.
+kubectl -n karakeep delete deployment/meilisearch service/meilisearch --ignore-not-found
 # restore.sh is mounted by name, so a changed script reaches web only through a restart.
 case "$applied" in
   *"configmap/karakeep-litestream configured"*) kubectl -n karakeep rollout restart deployment/web ;;
