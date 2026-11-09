@@ -1,8 +1,8 @@
 # Karakeep on fiuhq/k3s: upstream's own manifests (../../kubernetes), unchanged, plus this overlay.
 #
-#   - Placement: every Karakeep pod prefers the always-on control-plane node (node-role.kubernetes.io/control-plane) and leaves an
-#     unreachable node after 30s instead of 5m, so it moves to another node while that one is down and comes back
-#     (the cluster's descheduler) once it is Ready again.
+#   - Placement: every Karakeep pod prefers the always-on control-plane node (node-role.kubernetes.io/control-plane)
+#     and leaves an unreachable node after 30s instead of 5m, so it moves to another node while that one is down and
+#     comes back (the cluster's descheduler) once it is Ready again.
 #   - Data follows the pod: assets live in the R2 bucket (ASSET_STORE_S3_*), and the two SQLite databases are restored
 #     from and replicated to R2 by Litestream. The volumes are emptyDirs; no PVC pins a pod to a node.
 #   - Fencing: each pod replicates under its own UID and a pointer file lists the newest UIDs first, so a pod still
