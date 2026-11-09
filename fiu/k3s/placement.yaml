@@ -13,9 +13,8 @@ spec:
             - weight: 100
               preference:
                 matchExpressions:
-                  - key: fiu.one/node
-                    operator: In
-                    values: ["mac"]
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
       tolerations:
         - key: node.kubernetes.io/unreachable
           operator: Exists
