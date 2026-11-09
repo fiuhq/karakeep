@@ -29,7 +29,6 @@ jobs:
       FIU_OTA_APP_ID: ${{ vars.FIU_OTA_APP_ID }}
       # The fork reports to no Sentry project.
       SENTRY_DISABLE_AUTO_UPLOAD: "true"
-      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6.1.0
         with:
@@ -39,6 +38,8 @@ jobs:
       - name: Fingerprint the native layer
         id: fp
         working-directory: apps/mobile
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           hash=$(npx expo-updates fingerprint:generate --platform android | jq -r .hash)
@@ -87,6 +88,7 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           TAG: ${{ steps.fp.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
           tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
