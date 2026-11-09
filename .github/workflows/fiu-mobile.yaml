@@ -19,6 +19,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       # Creates the APK release when the native layer changed.
       contents: write
@@ -80,7 +81,7 @@ jobs:
         working-directory: apps/mobile
         run: |
           npx expo prebuild --platform android --no-install
-          (cd android && ./gradlew assembleRelease --no-daemon)
+          (cd android && ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a)
       - name: Sign and release
         if: steps.fp.outputs.build == 'true'
         working-directory: apps/mobile
