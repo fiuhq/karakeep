@@ -44,6 +44,7 @@ export default (): AppConfig => {
   if (process.env.FIU_VARIANT !== "fiu") return upstream;
   const expo = upstream.expo;
   const ota = otaServer();
+  const { eas: _eas, ...extra } = expo.extra ?? {};
   return {
     expo: {
       ...expo,
@@ -68,7 +69,7 @@ export default (): AppConfig => {
           "xprem-branch": "",
         },
       },
-      extra: { ...expo.extra, fiuVariant: true },
+      extra: { ...extra, fiuVariant: true },
     },
   };
 };

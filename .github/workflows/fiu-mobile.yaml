@@ -40,13 +40,19 @@ jobs:
         id: fp
         working-directory: apps/mobile
         run: |
+          set -euo pipefail
           hash=$(npx expo-updates fingerprint:generate --platform android | jq -r .hash)
+          if [[ ! "$hash" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected a 40-character hex fingerprint, read '$hash'"; exit 1
+          fi
           tag="mobile-${hash:0:12}"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          if view=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" 2>&1); then
             echo "build=false" >> "$GITHUB_OUTPUT"; echo "a build for $tag exists: publishing an update"
-          else
+          elif [[ "$view" == *"release not found"* ]]; then
             echo "build=true" >> "$GITHUB_OUTPUT"; echo "no build for $tag: building an APK"
+          else
+            echo "$view"; echo "::error::could not check for release $tag"; exit 1
           fi
 
       # Same native layer as a released build: ship the JavaScript over the air.
