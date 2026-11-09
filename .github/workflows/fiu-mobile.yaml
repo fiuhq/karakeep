@@ -81,6 +81,9 @@ jobs:
         working-directory: apps/mobile
         run: |
           npx expo prebuild --platform android --no-install
+          # Expo's generated gradle.properties caps the JVM at 512m of metaspace; Android lint ran out of it on CI.
+          sed -i '/^org.gradle.jvmargs=/d' android/gradle.properties
+          echo 'org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8' >> android/gradle.properties
           (cd android && ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a)
       - name: Sign and release
         if: steps.fp.outputs.build == 'true'
