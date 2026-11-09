@@ -27,30 +27,48 @@ function loadUpstream(): AppConfig {
 
 const upstream = loadUpstream();
 
-// The fork's Expo project; updates are published to it from CI on every trunk change.
-const FIU_PROJECT_ID = "405d0ac7-e0ba-4daa-b4d6-555349cf232b";
+// The fork's over-the-air update server (an Expo Updates protocol server the operator hosts) and the app's id on it.
+// CI passes both from repository variables, so this public file names neither.
+function otaServer(): { url: string; appId: string } {
+  const url = process.env.FIU_OTA_URL;
+  const appId = process.env.FIU_OTA_APP_ID;
+  if (!url || !appId) {
+    throw new Error(
+      "FIU_VARIANT=fiu needs FIU_OTA_URL and FIU_OTA_APP_ID: the update server and this app's id on it",
+    );
+  }
+  return { url: url.replace(/\/+$/, ""), appId };
+}
 
 export default (): AppConfig => {
   if (process.env.FIU_VARIANT !== "fiu") return upstream;
   const expo = upstream.expo;
+  const ota = otaServer();
   return {
     expo: {
       ...expo,
       name: "Karakeep fiu",
       slug: "karakeep-fiu",
-      owner: "dinhphieu",
       // Its own scheme and package, so it installs beside the store app instead of clashing with its signature.
       scheme: "karakeep-fiu",
       ios: { ...expo.ios, bundleIdentifier: "one.fiu.karakeep" },
       android: { ...expo.android, package: "one.fiu.karakeep" },
       // An update reaches only builds whose native layer matches it exactly.
       runtimeVersion: { policy: "fingerprint" },
-      updates: { url: `https://u.expo.dev/${FIU_PROJECT_ID}` },
-      extra: {
-        ...expo.extra,
-        fiuVariant: true,
-        eas: { projectId: FIU_PROJECT_ID },
+      updates: {
+        url: `${ota.url}/manifest`,
+        enabled: true,
+        // The app accepts only updates signed by the server's key for this app; certs/fiu-ota.crt is its public half.
+        codeSigningCertificate: "./certs/fiu-ota.crt",
+        codeSigningMetadata: { keyid: "main", alg: "rsa-v1_5-sha256" },
+        // expo-updates sends only headers declared at build time; the server routes on all three.
+        requestHeaders: {
+          "expo-channel-name": "trunk",
+          "expo-app-id": ota.appId,
+          "xprem-branch": "",
+        },
       },
+      extra: { ...expo.extra, fiuVariant: true },
     },
   };
 };
