@@ -14,18 +14,7 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {},
-    "fiu": {
-      "distribution": "internal",
-      "channel": "trunk",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "FIU_VARIANT": "fiu",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      }
-    }
+    "production": {}
   },
   "submit": {
     "production": {}

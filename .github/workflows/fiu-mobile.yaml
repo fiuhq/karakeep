@@ -1,5 +1,6 @@
-# The fork's mobile app follows trunk: every push that can change it publishes an over-the-air update to the
-# installed build, or starts a new build when the native layer changed (Expo's fingerprint decides which).
+# The fork's mobile app follows trunk from the operator's own servers. Every push that can change the app either
+# publishes an over-the-air update to the installed build (the native layer is unchanged) or builds, signs and
+# releases a new APK (it changed). Expo's fingerprint of the native layer decides which; a release is tagged with it.
 name: fiu mobile
 on:
   push:
@@ -18,23 +19,89 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
-      contents: read
+      # Creates the APK release when the native layer changed.
+      contents: write
     env:
-      # Selects the fork's identity and update URL in apps/mobile/app.config.ts.
+      # Selects the fork's identity and update server in apps/mobile/app.config.ts.
       FIU_VARIANT: fiu
+      FIU_OTA_URL: ${{ vars.FIU_OTA_URL }}
+      FIU_OTA_APP_ID: ${{ vars.FIU_OTA_APP_ID }}
+      # The fork reports to no Sentry project.
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
     steps:
       - uses: actions/checkout@v6.1.0
         with:
           persist-credentials: false
       - uses: $/tooling/github/setup
-      - uses: expo/expo-github-action@9.0.2
+
+      - name: Fingerprint the native layer
+        id: fp
+        working-directory: apps/mobile
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          hash=$(npx expo-updates fingerprint:generate --platform android | jq -r .hash)
+          if [[ ! "$hash" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected a 40-character hex fingerprint, read '$hash'"; exit 1
+          fi
+          tag="mobile-${hash:0:12}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if view=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" 2>&1); then
+            echo "build=false" >> "$GITHUB_OUTPUT"; echo "a build for $tag exists: publishing an update"
+          elif [[ "$view" == *"release not found"* ]]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"; echo "no build for $tag: building an APK"
+          else
+            echo "$view"; echo "::error::could not check for release $tag"; exit 1
+          fi
+
+      # Same native layer as a released build: ship the JavaScript over the air.
+      - name: Publish an update
+        if: steps.fp.outputs.build == 'false'
+        working-directory: apps/mobile
+        env:
+          EOO_TOKEN: ${{ secrets.EOO_TOKEN }}
+          RELEASE_CHANNEL: trunk
+        run: npx -y eoas@3.2.7 publish --branch trunk --platform android --nonInteractive --message "${GITHUB_SHA::12}"
+
+      # A new native layer: build, sign with the fork's key and release the APK the phone installs.
+      - uses: actions/setup-java@v4.8.0
+        if: steps.fp.outputs.build == 'true'
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-      - uses: expo/expo-github-action/continuous-deploy-fingerprint@9.0.2
+          java-version: "17"
+          distribution: temurin
+      - uses: android-actions/setup-android@v3.2.2
+        if: steps.fp.outputs.build == 'true'
         with:
-          profile: fiu
-          branch: trunk
-          platform: android
-          working-directory: apps/mobile
+          packages: "platform-tools"
+      - name: Build the APK
+        if: steps.fp.outputs.build == 'true'
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform android --no-install
+          # Expo's generated gradle.properties caps the JVM at 512m of metaspace; Android lint ran out of it on CI.
+          sed -i 's/^org\.gradle\.jvmargs=.*/org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8/' android/gradle.properties
+          grep -qx 'org.gradle.jvmargs=-Xmx6g.*' android/gradle.properties
+          (cd android && ./gradlew assembleRelease --no-daemon --stacktrace -PreactNativeArchitectures=arm64-v8a)
+      - name: Sign and release
+        if: steps.fp.outputs.build == 'true'
+        working-directory: apps/mobile
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          TAG: ${{ steps.fp.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.p12" --ks-type PKCS12 --ks-key-alias fiu \
+            --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD \
+            --out "$RUNNER_TEMP/karakeep-fiu.apk" android/app/build/outputs/apk/release/app-release.apk
+          rm -f "$RUNNER_TEMP/release.p12"
+          "$tools/apksigner" verify "$RUNNER_TEMP/karakeep-fiu.apk"
+          gh release create "$TAG" "$RUNNER_TEMP/karakeep-fiu.apk" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "Karakeep fiu ($TAG)" --latest \
+            --notes "Native build for fingerprint $TAG. Later trunk changes reach it over the air until the native layer changes again."
