@@ -82,6 +82,7 @@ const HighlightForm: React.FC<HighlightFormProps> = ({
       <PopoverAnchor virtualRef={anchorRef} />
       <PopoverContent
         side={isMobile ? "bottom" : "top"}
+        collisionPadding={12}
         className="w-80 space-y-3 p-3"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -92,6 +93,9 @@ const HighlightForm: React.FC<HighlightFormProps> = ({
               <Button
                 size="none"
                 key={color}
+                // English like the rest of this popover
+                aria-label={color.charAt(0).toUpperCase() + color.slice(1)}
+                aria-pressed={selectedColor === color}
                 onClick={() => setSelectedColor(color)}
                 variant="none"
                 className={cn(
@@ -641,6 +645,12 @@ const BookmarkHTMLHighlighter = forwardRef<
       }
     }
 
+    // A menu with nothing to save would close on Save without saving anything.
+    const highlight = buildHighlightFromRange(range, "yellow");
+    if (!highlight) {
+      return;
+    }
+
     // Position the menu based on device type
     const rect = range.getBoundingClientRect();
     setMenuPosition({
@@ -648,11 +658,7 @@ const BookmarkHTMLHighlighter = forwardRef<
       y: isMobile ? rect.bottom : rect.top, // Position below on mobile, above otherwise
     });
 
-    // Store the highlight for later use
-    const highlight = buildHighlightFromRange(range, "yellow");
-    if (highlight) {
-      applyHighlightByOffset(highlight);
-    }
+    applyHighlightByOffset(highlight);
     setPendingHighlight(highlight);
   };
 
@@ -725,21 +731,21 @@ const BookmarkHTMLHighlighter = forwardRef<
     return text;
   };
 
-  const getTextNodeOffset = (node: Node): number => {
-    let offset = 0;
-    const walker = document.createTreeWalker(
-      contentRef.current!,
-      NodeFilter.SHOW_TEXT,
-      null,
-    );
-
-    while (walker.nextNode()) {
-      if (walker.currentNode === node) {
-        return offset;
-      }
-      offset += walker.currentNode.textContent?.length ?? 0;
+  /**
+   * The position in the article's text of a selection boundary. A boundary can
+   * sit on an element rather than in a text node, as when a drag ends past the
+   * end of a line, between paragraphs or outside the article, so this counts
+   * the text before it instead of looking for its text node.
+   */
+  const getTextOffset = (node: Node, offset: number): number => {
+    const content = contentRef.current;
+    if (!content || !content.contains(node)) {
+      return -1;
     }
-    return -1;
+    const before = document.createRange();
+    before.selectNodeContents(content);
+    before.setEnd(node, offset);
+    return before.toString().length;
   };
 
   const buildHighlightFromRange = (
@@ -748,11 +754,12 @@ const BookmarkHTMLHighlighter = forwardRef<
   ): Highlight | null => {
     if (!contentRef.current) return null;
 
-    const startOffset =
-      getTextNodeOffset(range.startContainer) + range.startOffset;
-    const endOffset = getTextNodeOffset(range.endContainer) + range.endOffset;
+    const startOffset = getTextOffset(range.startContainer, range.startOffset);
+    const endOffset = getTextOffset(range.endContainer, range.endOffset);
 
-    if (startOffset === -1 || endOffset === -1) return null;
+    if (startOffset === -1 || endOffset === -1 || startOffset >= endOffset) {
+      return null;
+    }
 
     const { prefix, suffix } = getHighlightContext(
       getFullText(),
