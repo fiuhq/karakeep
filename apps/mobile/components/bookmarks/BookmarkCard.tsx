@@ -242,7 +242,8 @@ function CardActions({
   itemName?: string;
 }) {
   return (
-    <View className="absolute bottom-3 right-3">
+    // Same height as the tag row, so the icons share its centre line.
+    <View className="absolute bottom-3 right-3 h-[22px] justify-center">
       <ActionBar actions={actions} compact={compact} itemName={itemName} />
     </View>
   );
@@ -263,7 +264,7 @@ function CardLayout({ ctx }: { ctx: BookmarkCardContext }) {
           className="min-h-[22px] justify-center"
           style={{ paddingRight: EXPANDED_ACTIONS_CLEARANCE }}
         >
-          <TagList bookmark={ctx.bookmark} maxVisible={3} />
+          <TagList bookmark={ctx.bookmark} />
         </View>
       </View>
     </BookmarkCardContainer.Provider>
@@ -318,6 +319,9 @@ function ListLayout({ ctx }: { ctx: BookmarkCardContext }) {
 
 const SWIPE_ACTION_WIDTH = 84;
 const SWIPE_TAP_GUARD_MS = 700;
+// Cards sit 16pt from the screen edge; ignoring their first 24pt leaves the
+// iOS edge-swipe-back zone to the navigator.
+const SWIPE_LEFT_EDGE_INSET = 24;
 
 function SwipeAction({
   icon: Icon,
@@ -470,6 +474,7 @@ function CardGestures({
     <ReanimatedSwipeable
       ref={swipeableRef}
       friction={1.6}
+      hitSlop={{ left: -SWIPE_LEFT_EDGE_INSET }}
       overshootLeft={false}
       overshootRight={false}
       leftThreshold={SWIPE_ACTION_WIDTH / 2}
