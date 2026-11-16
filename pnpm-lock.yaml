@@ -823,9 +823,6 @@ importers:
       remark-gfm:
         specifier: ^4.0.0
         version: 4.0.0(supports-color@8.1.1)
-      request-ip:
-        specifier: ^3.3.0
-        version: 3.3.0
       sharp:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@26.6.1)
@@ -869,9 +866,6 @@ importers:
       '@types/react-syntax-highlighter':
         specifier: ^15.5.13
         version: 15.5.13
-      '@types/request-ip':
-        specifier: ^0.0.41
-        version: 0.0.41
       autoprefixer:
         specifier: ^10.4.17
         version: 10.4.21(postcss@8.5.28)
@@ -1040,12 +1034,12 @@ importers:
       patchright:
         specifier: 1.59.4
         version: 1.59.4
-      pdf2json:
-        specifier: ^3.1.5
-        version: 3.1.5
       pdf2pic:
         specifier: ^3.1.3
         version: 3.1.3(supports-color@8.1.1)
+      pdfjs-dist:
+        specifier: 6.4.299
+        version: 6.4.299
       prom-client:
         specifier: ^15.1.3
         version: 15.1.3
@@ -7410,9 +7404,6 @@ packages:
   '@types/readdir-glob@1.1.5':
     resolution: {integrity: sha512-raiuEPUYqXu+nvtY2Pe8s8FEmZ3x5yAH4VkLdihcPdalvsHltomrRC9BzuStrJ9yk06470hS0Crw0f1pXqD+Hg==}
 
-  '@types/request-ip@0.0.41':
-    resolution: {integrity: sha512-Qzz0PM2nSZej4lsLzzNfADIORZhhxO7PED0fXpg4FjXiHuJ/lMyUg+YFF5q8x9HPZH3Gl6N+NOM8QZjItNgGKg==}
-
   '@types/responselike@1.0.3':
     resolution: {integrity: sha512-H/+L+UkTV33uf49PH5pCAUBVPNj2nDBXTN+qS1dOwyyg24l3CcicicCA7ca+HMvJBZcFgl5r8e+RR6elsb4Lyw==}
 
@@ -12056,8 +12047,8 @@ packages:
     resolution: {integrity: sha512-dRB78srN/l6gqWulah9SrxeYnxeddIG30+GOqK/9OlLVyLg3HPnr6SqOWTWOXKRwC2eGYCkZ59NNuSgvSrpgOA==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-forge@1.4.0:
-    resolution: {integrity: sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ==}
+  node-forge@1.4.3:
+    resolution: {integrity: sha512-P6wzfh6t70avmV8FrVEAd/36sOPJQ+hkaJVX1Laap9J/77m7M0eyozDvc8SwnDf4P7MP94gwbAAo0rg3YVXT+g==}
     engines: {node: '>= 6.13.0'}
 
   node-gyp@13.0.2:
@@ -12527,16 +12518,13 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
-  pdf2json@3.1.5:
-    resolution: {integrity: sha512-djZPInDLNuJU+o6GaJNvcoUh6MtUAx3IYTQCTxywHzeg1jC5YWgz/XzlgmduxxBblpMTqY2fjcWwvyRdGPTyrQ==}
-    engines: {node: '>=20.18.0', npm: '>=10.8.2'}
-    hasBin: true
-    bundledDependencies:
-      - '@xmldom/xmldom'
-
   pdf2pic@3.1.3:
     resolution: {integrity: sha512-KbW4Qb7iHw2fBRWtA9FTc4pZg9cokiFIzc6cE7dzelTrhXWolfQuG1fYVC0E2BRmK/w7xfBjQ+OEsPZPO3QEew==}
     engines: {node: '>=14'}
+
+  pdfjs-dist@6.4.299:
+    resolution: {integrity: sha512-AVl138zALtfaAPvADulE0PZThbYzCBS79nL4pOSL/6Sm/4AH5A21BD9VHt97OlCuzJuCpmeZtAtkinisF4Vb1g==}
+    engines: {node: '>=22.13.0 || >=24'}
 
   peberminta@0.9.0:
     resolution: {integrity: sha512-XIxfHpEuSJbITd1H3EeQwpcZbTLHc+VVr8ANI9t5sit565tsI4/xK3KWTUFE2e6QiangUkh3B0jihzmGnNrRsQ==}
@@ -13779,9 +13767,6 @@ packages:
   repeat-string@1.6.1:
     resolution: {integrity: sha512-PV0dzCYDNfRi1jCDbJzpW7jNNDRuCOG/jI5ctQcGKt/clZD+YcPS3yIlWuTJMmESC8aevCFmWJy5wjAFgNqN6w==}
     engines: {node: '>=0.10'}
-
-  request-ip@3.3.0:
-    resolution: {integrity: sha512-cA6Xh6e0fDBBBwH77SLJaJPBmD3nWVAcF9/XAcsrIHdjhFzFiB5aNQFytdjCGPezU3ROwrR11IddKAM08vohxA==}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -15672,6 +15657,9 @@ packages:
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
+
+ignoredOptionalDependencies:
+  - '@napi-rs/canvas'
 
 snapshots:
 
@@ -19301,7 +19289,7 @@ snapshots:
       fetch-nodeshim: 0.4.10
       lan-network: 0.2.1
       multitars: 1.0.2
-      node-forge: 1.4.0
+      node-forge: 1.4.3
       npm-package-arg: 11.0.3
       ora: 3.4.0
       picomatch: 4.0.7
@@ -19338,7 +19326,7 @@ snapshots:
 
   '@expo/code-signing-certificates@0.0.7':
     dependencies:
-      node-forge: 1.4.0
+      node-forge: 1.4.3
 
   '@expo/config-plugins@58.0.13(supports-color@8.1.1)(typescript@7.0.2)':
     dependencies:
@@ -22605,10 +22593,6 @@ snapshots:
       csstype: 3.2.3
 
   '@types/readdir-glob@1.1.5':
-    dependencies:
-      '@types/node': 24.10.3
-
-  '@types/request-ip@0.0.41':
     dependencies:
       '@types/node': 24.10.3
 
@@ -28040,7 +28024,7 @@ snapshots:
       fetch-blob: 3.2.0
       formdata-polyfill: 4.0.10
 
-  node-forge@1.4.0: {}
+  node-forge@1.4.3: {}
 
   node-gyp@13.0.2:
     dependencies:
@@ -28556,13 +28540,13 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  pdf2json@3.1.5: {}
-
   pdf2pic@3.1.3(supports-color@8.1.1):
     dependencies:
       gm: 1.25.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
+
+  pdfjs-dist@6.4.299: {}
 
   peberminta@0.9.0: {}
 
@@ -30036,8 +30020,6 @@ snapshots:
       strip-ansi: 6.0.1
 
   repeat-string@1.6.1: {}
-
-  request-ip@3.3.0: {}
 
   require-directory@2.1.1: {}
 
